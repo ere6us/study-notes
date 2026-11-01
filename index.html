@@ -2,7 +2,7 @@
 <!--
 THESIS: Couture stationery for studying. The handbook arrives like a letterpress card in confident pink, not a generic AI-tool screen of grey cards.
 OWN-WORLD: Blush paper ground, white card stock, deep berry ink, one confident pink (Pantone 219-like #da1884) for actions and marks, champagne-gold hairlines. Great Vibes script only for the name and the dedication; Bodoni Moda for headings; Avenir Next for everything read and tapped. Key terms get a pink highlighter swipe.
-STORY: She opens it every day, sees it was made for her, picks notes, slides or photos, and gets a handbook to memorize or a simple explanation, then saves or shares it as a PDF.
+STORY: She opens it every day, sees it was made for her, picks notes, slides or photos, and gets a handbook to memorize or a simple explanation, asks about any passage she doesn't get, then saves or shares it as a PDF.
 FIRST VIEWPORT: Centred script name and dedication over a short gold rule; below, the two-way mode switch and two big pink pickers within thumb reach.
 FORM: Invitation-card stationery, a single centred card column.
 -->
@@ -117,6 +117,12 @@ FORM: Invitation-card stationery, a single centred card column.
       <div id="result-note" class="note" hidden></div>
       <article id="handbook" class="sheet handbook"></article>
       <div id="actions" class="actions">
+        <button id="ask" class="button ask" type="button" hidden>
+          <svg class="ask-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
+          </svg>
+          <span id="ask-label">Ask about this</span>
+        </button>
         <div class="action-buttons">
           <button id="save-pdf" class="button primary" type="button">Save as PDF</button>
           <button id="share" class="button secondary share" type="button">
@@ -136,5 +142,26 @@ FORM: Invitation-card stationery, a single centred card column.
     <button id="change-key" class="text-button" type="button" hidden>Change key</button>
     <p>Your key stays on this phone. Your files go only to Google's Gemini API. On the free plan, Google may use what you send to improve its products, so don't upload anything private.</p>
   </footer>
+
+  <dialog id="ask-dialog" class="ask-dialog" aria-labelledby="ask-title">
+    <form id="ask-form" class="ask-form">
+      <div class="ask-head">
+        <h2 id="ask-title" class="ask-title" tabindex="-1" autofocus>Ask about this</h2>
+        <button id="ask-cancel" class="text-button" type="button">Cancel</button>
+      </div>
+      <p id="ask-quote" class="ask-quote"></p>
+      <div class="chips" role="group" aria-label="Quick questions">
+        <button class="chip" type="button" data-question="Explain this simply.">Explain simply</button>
+        <button class="chip" type="button" data-question="Give me an everyday example of this.">Give an example</button>
+        <button class="chip" type="button" data-question="Give me a memory trick for this.">Memory trick</button>
+        <button class="chip" type="button" data-question="Draw a simple diagram of this.">Draw a diagram</button>
+      </div>
+      <label class="ask-label" for="ask-input">Or type your question</label>
+      <div class="ask-row">
+        <textarea id="ask-input" rows="2" maxlength="300" enterkeyhint="send" autocomplete="off"></textarea>
+        <button id="ask-send" class="button primary" type="submit">Ask</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 </html>
