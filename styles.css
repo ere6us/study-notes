@@ -266,6 +266,34 @@ body {
 }
 .timer { color: var(--berry-soft); font-weight: 600; font-variant-numeric: tabular-nums; }
 
+/* Love notes: one line at a time under the status while Gemini works (the lines are in love-notes.md) */
+.love {
+  display: grid;
+  align-items: center;
+  max-width: 28rem;
+  min-height: calc(3 * 1.45em); /* room for three lines, so nothing jumps */
+  margin: 0.9rem auto 0;
+  color: var(--berry);
+  font: italic 500 1.0625rem/1.45 var(--font-display);
+  text-wrap: balance;
+}
+.love-line { grid-area: 1 / 1; transition: opacity 350ms ease; }
+.love-line.entering, .love-line.leaving { opacity: 0; }
+.love-line::before {
+  content: "\2665\FE0E";
+  display: inline-block;
+  margin-right: 0.45em;
+  color: var(--pink);
+  font: normal 400 0.85em/1 var(--font-ui);
+  animation: love-beat 1.6s ease-in-out infinite;
+}
+@keyframes love-beat {
+  0%, 44%, 100% { transform: scale(1); }
+  12% { transform: scale(1.2); }
+  24% { transform: scale(1.02); }
+  34% { transform: scale(1.12); }
+}
+
 /* Result */
 #result { margin: 0 0 1.5rem; scroll-margin-top: 0.75rem; }
 .actions {
@@ -369,6 +397,8 @@ body {
   .status::after { animation: none; background: var(--pink); opacity: 0.5; }
   .button, .mode { transition: none; }
   .button:active { transform: none; }
+  .love-line { transition: none; }
+  .love-line::before { animation: none; }
 }
 
 @media print {
