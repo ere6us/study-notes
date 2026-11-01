@@ -42,13 +42,17 @@ The models are listed at the top of [`gemini.js`](gemini.js): `gemini-3.8-flash`
 
 [`pptx.js`](pptx.js) reads a .pptx on its own, without the rest of the page: `readPptx(file)` returns the slides in presentation order with their text and downscaled pictures.
 
+## Waiting messages (owner)
+
+While Gemini works, a short love note sits under the status. It changes every 7 seconds, and each full minute brings a "still waiting" line with the time. The lines are in [`love-notes.md`](love-notes.md): each `##` heading is a stage (Getting ready, Sending, Reading, Planning, Writing, Still waiting) and each `-` bullet is one line. `{thing}` becomes "handbook" or "explanation", and `{time}` becomes "1 minute", "2 minutes" and so on. Edit it on GitHub; the next run uses the new lines. A line doesn't come back until every other line of its stage has been shown, even on later visits.
+
 ## Privacy
 
 There is no server. The key is stored only in the student's browser (localStorage) and is sent only to Google. Files go straight from the phone to the Gemini API. On the free plan, Google may use what is sent to improve its products, so don't upload anything private.
 
 ## Tests
 
-The Playwright tests in [`tests/`](tests) run in WebKit with iPhone 12 emulation against a mocked Gemini API: every input type, both modes, the diagrams, the free-model fallback, every error message, and model output full of malicious HTML. GitHub Actions runs them on every push and uploads screenshots of every screen as the `screenshots` artifact. To run them locally:
+The Playwright tests in [`tests/`](tests) run in WebKit with iPhone 12 emulation against a mocked Gemini API: every input type, both modes, the diagrams, the waiting messages, the free-model fallback, every error message, and model output full of malicious HTML. GitHub Actions runs them on every push and uploads screenshots of every screen as the `screenshots` artifact. To run them locally:
 
 ```sh
 cd tests
