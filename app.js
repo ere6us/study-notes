@@ -1,12 +1,24 @@
 import { renderMarkdown } from './markdown.js';
+import { Problem, classify, describe } from './errors.js';
+import { readInput } from './inputs.js';
+import { MODELS, forgetUploads, generate, prepareParts } from './gemini.js';
 
-// Pinned stable free-tier Flash model; the -latest alias is only a fallback if Google retires it.
-const MODELS = ['gemini-3.8-flash', 'gemini-flash-latest'];
-const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
-const SKILL_URL = 'skills/handbook/SKILL.md';
-const MAX_PDF_BYTES = 50 * 1024 * 1024;
+const SKILLS = { handbook: 'skills/handbook/SKILL.md', explain: 'skills/explain/SKILL.md' };
+const FRONTMATTER = /^\uFEFF?---\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/;
 const KEY_ITEM = 'handbook.geminiKey';
 const LAST_ITEM = 'handbook.last';
+const MODE_ITEM = 'handbook.mode';
+// Keep what was already written when one of these stops the answer part-way.
+const KEEP_PARTIAL = new Set(['CONNECTION_LOST', 'SUSPENDED', 'NETWORK', 'OFFLINE', 'BLOCKED', 'RECITATION', 'STOPPED', 'TIMEOUT', 'BUSY', 'UNKNOWN']);
+const BACKUP_LINES = {
+  day: "Made with Google's backup model because today's main free limit is used up.",
+  'no-quota': "Made with Google's backup model because the main one has no free allowance on this key.",
+  gone: "Made with Google's backup model because the main one isn't available any more.",
+};
+const WORDS = {
+  handbook: { thing: 'handbook', title: 'Handbook' },
+  explain: { thing: 'explanation', title: 'Explained' },
+};
 
 const $ = (id) => document.getElementById(id);
 const ui = {
@@ -17,10 +29,14 @@ const ui = {
   cancelKey: $('cancel-key'),
   forgetKey: $('forget-key'),
   pick: $('pick'),
-  fileInput: $('file-input'),
+  docInput: $('doc-input'),
+  photoInput: $('photo-input'),
   problem: $('problem'),
-  problemText: $('problem-text'),
+  problemTitle: $('problem-title'),
+  problemBody: $('problem-body'),
+  problemCode: $('problem-code'),
   retry: $('retry'),
+  fixKey: $('fix-key'),
   working: $('working'),
   statusText: $('status-text'),
   timer: $('timer'),
@@ -31,7 +47,7 @@ const ui = {
   actions: $('actions'),
   savePdf: $('save-pdf'),
   copy: $('copy'),
-  printHint: $('print-hint'),
+  notice: $('notice'),
 };
 
 const storage = {
@@ -39,44 +55,30 @@ const storage = {
     try { return localStorage.getItem(name); } catch { return null; }
   },
   set(name, value) {
-    try { localStorage.setItem(name, value); } catch { /* storage full or blocked */ }
+    try {
+      localStorage.setItem(name, value);
+      return true;
+    } catch {
+      return false;
+    }
   },
   remove(name) {
     try { localStorage.removeItem(name); } catch { /* ignore */ }
   },
 };
 
-class Friendly extends Error {
-  constructor(message, retry = false) {
-    super(message);
-    this.retry = retry;
-  }
-}
-
-class ApiError extends Error {
-  constructor(status, info) {
-    super((info && info.message) || `HTTP ${status}`);
-    this.status = Number(status) || 0;
-    this.details = (info && info.details) || [];
-  }
-
-  static async from(response) {
-    let info = null;
-    try {
-      const body = await response.json();
-      info = (Array.isArray(body) ? body[0] : body).error;
-    } catch { /* not JSON */ }
-    return new ApiError(response.status, info);
-  }
-}
-
-let current = null; // the handbook on screen: { name, md, note }
-let lastFile = null; // the PDF of the latest attempt, for "Try again"
-let job = null; // the conversion in progress
+let sessionKey = ''; // used for this visit only when the browser won't store the key
+let current = null; // the handbook on screen: { name, md, mode, notes, backup }
+let lastFiles = null; // the files of the latest attempt, for "Try again"
+let job = null; // the work in progress
 let wakeLock = null;
+let countdown = 0;
+
+const getKey = () => storage.get(KEY_ITEM) || sessionKey;
+const getMode = () => (document.querySelector('input[name="mode"]:checked') || {}).value === 'explain' ? 'explain' : 'handbook';
 
 function show(view) {
-  const hasKey = Boolean(storage.get(KEY_ITEM));
+  const hasKey = Boolean(getKey());
   ui.setup.hidden = view !== 'setup';
   ui.pick.hidden = view !== 'pick';
   ui.working.hidden = view !== 'working';
@@ -87,166 +89,157 @@ function show(view) {
   ui.actions.hidden = view !== 'pick';
 }
 
-function display(handbook) {
-  ui.handbook.replaceChildren(renderMarkdown(handbook.md));
-  ui.resultNote.textContent = handbook.note || '';
-  ui.resultNote.hidden = !handbook.note;
-  ui.printHint.hidden = true;
-  document.title = `Handbook - ${handbook.name.replace(/\.pdf$/i, '')}`;
+function noticeNodes(problem) {
+  const info = describe(problem);
+  const title = document.createElement('p');
+  title.className = 'notice-title';
+  title.textContent = info.title;
+  const body = document.createElement('p');
+  body.textContent = info.body;
+  const code = document.createElement('p');
+  code.className = 'code';
+  code.textContent = `Code: ${info.code}`;
+  return [title, body, code];
 }
 
-function showProblem(message, canRetry) {
-  ui.problemText.textContent = message;
+function display(handbook) {
+  ui.handbook.replaceChildren(renderMarkdown(handbook.md));
+  const notes = [];
+  if (handbook.backup) {
+    const line = document.createElement('p');
+    line.className = 'backup-line';
+    line.textContent = BACKUP_LINES[handbook.backup] || BACKUP_LINES.day;
+    notes.push(line);
+  }
+  for (const code of handbook.notes || []) {
+    const box = document.createElement('div');
+    box.className = 'note-item';
+    box.append(...noticeNodes(new Problem(code)));
+    notes.push(box);
+  }
+  ui.resultNote.replaceChildren(...notes);
+  ui.resultNote.hidden = !notes.length;
+  ui.notice.hidden = true;
+  const words = WORDS[handbook.mode] || WORDS.handbook;
+  document.title = `${words.title} - ${handbook.name.replace(/\.(pdf|pptx)$/i, '')}`;
+}
+
+function showProblem(problem) {
+  const info = describe(problem);
+  ui.problemTitle.textContent = info.title;
+  ui.problemBody.textContent = info.body;
+  ui.problemCode.textContent = `Code: ${info.code}`;
+  stopCountdown();
+  const canRetry = Boolean(lastFiles) && (info.action === 'retry' || info.action === 'wait');
   ui.retry.hidden = !canRetry;
+  ui.fixKey.hidden = info.action !== 'key';
+  if (info.action === 'wait' && canRetry) startCountdown(problem.vars.wait || 60);
   ui.problem.hidden = false;
   ui.problem.scrollIntoView({ block: 'center' });
 }
 
-function formatSize(bytes) {
-  return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+function hideProblem() {
+  stopCountdown();
+  ui.problem.hidden = true;
 }
 
-function checkFile(file) {
-  if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
-    return `${file.name} isn't a PDF. Export slides or documents as PDF first (in PowerPoint or Keynote, use Export and choose PDF).`;
-  }
-  if (file.size === 0) return `${file.name} is empty. Choose another PDF.`;
-  if (file.size > MAX_PDF_BYTES) {
-    return `${file.name} is ${formatSize(file.size)}. Gemini takes PDFs up to 50 MB, so split it into smaller parts (for example, one chapter each) and make a handbook for each part.`;
-  }
-  return '';
+function startCountdown(seconds) {
+  let left = Math.max(1, Math.round(seconds));
+  const render = () => {
+    ui.retry.disabled = left > 0;
+    ui.retry.textContent = left > 0 ? `Try again in ${left >= 60 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : `${left} s`}` : 'Try again';
+  };
+  render();
+  countdown = setInterval(() => {
+    left -= 1;
+    render();
+    if (left <= 0) {
+      clearInterval(countdown);
+      countdown = 0;
+    }
+  }, 1000);
 }
 
-async function loadSkill() {
-  const response = await fetch(SKILL_URL, { cache: 'no-cache' });
-  if (!response.ok) throw new Friendly("Couldn't load the handbook instructions. Check your internet connection, then tap Try again.", true);
-  const text = (await response.text()).replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/, '').trim();
-  if (!text) throw new Friendly('The handbook instructions are empty. Ask the site owner to fix skills/handbook/SKILL.md.');
+function stopCountdown() {
+  clearInterval(countdown);
+  countdown = 0;
+  ui.retry.disabled = false;
+  ui.retry.textContent = 'Try again';
+}
+
+function setStatus(text) {
+  ui.statusText.textContent = text;
+}
+
+function promptFor(input, mode) {
+  const what = {
+    pdf: `this PDF (${input.label})`,
+    slides: `these slides (${input.label}). Each slide's text, tables, chart data, SmartArt and speaker notes come first, followed by its pictures`,
+    photos: `these photos of notes, textbook pages or diagrams (${input.label}), in order`,
+  }[input.kind];
+  return mode === 'explain' ? `Explain ${what} simply, so I can understand it.` : `Make my study handbook from ${what}.`;
+}
+
+async function loadSkill(mode) {
+  let response;
+  try {
+    response = await fetch(SKILLS[mode], { cache: 'no-cache' });
+  } catch {
+    throw new Problem('SKILL_MISSING');
+  }
+  if (!response.ok) throw new Problem('SKILL_MISSING');
+  const text = (await response.text()).replace(FRONTMATTER, '').trim();
+  if (!text) throw new Problem('SKILL_MISSING');
   return text;
 }
 
-function readAsBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = String(reader.result);
-      resolve(url.slice(url.indexOf(',') + 1));
-    };
-    reader.onerror = () => reject(new Friendly(`Couldn't open ${file.name}. If it's stored in iCloud, wait for it to download, then try again.`, true));
-    reader.readAsDataURL(file);
-  });
-}
-
-async function streamHandbook(model, request, progress) {
-  const response = await fetch(`${API_BASE}${model}:streamGenerateContent?alt=sse`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': request.key },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: request.skill }] },
-      contents: [{
-        role: 'user',
-        parts: [
-          { inlineData: { mimeType: 'application/pdf', data: request.pdf } },
-          { text: `Make my study handbook from this PDF: ${request.fileName}` },
-        ],
-      }],
-      // Streaming thought summaries keeps the connection busy while the model plans.
-      generationConfig: { thinkingConfig: { includeThoughts: true } },
-    }),
-    signal: request.signal,
-  });
-  if (!response.ok) throw await ApiError.from(response);
-  progress.stage('reading');
-
-  let finishReason = '';
-  const handle = (data) => {
-    let chunk;
-    try { chunk = JSON.parse(data); } catch { return; }
-    if (chunk.error) throw new ApiError(chunk.error.code, chunk.error);
-    if (chunk.promptFeedback && chunk.promptFeedback.blockReason) finishReason = chunk.promptFeedback.blockReason;
-    const candidate = chunk.candidates && chunk.candidates[0];
-    if (!candidate) return;
-    for (const part of (candidate.content && candidate.content.parts) || []) {
-      if (typeof part.text !== 'string' || !part.text) continue;
-      if (part.thought) progress.stage('thinking');
-      else progress.text(part.text);
-    }
-    if (candidate.finishReason) finishReason = candidate.finishReason;
-  };
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  for (;;) {
-    const { value, done } = await reader.read();
-    buffer += decoder.decode(value || new Uint8Array(0), { stream: !done });
-    let newline;
-    while ((newline = buffer.indexOf('\n')) !== -1) {
-      const line = buffer.slice(0, newline).trim();
-      buffer = buffer.slice(newline + 1);
-      if (line.startsWith('data:')) handle(line.slice(5).trim());
-    }
-    if (done) break;
-  }
-  if (buffer.trim().startsWith('data:')) handle(buffer.trim().slice(5).trim());
-  return finishReason;
-}
-
-async function generate(request, progress) {
-  let lastError = null;
-  for (const model of MODELS) {
-    try {
-      return await streamHandbook(model, request, progress);
-    } catch (error) {
-      const modelGone = error instanceof ApiError
-        && (error.status === 404 || (error.status === 429 && /limit:\s*0\b/.test(error.message)));
-      if (!modelGone || progress.gotText) throw error;
-      lastError = error;
-    }
-  }
-  throw lastError;
-}
-
-async function start(file) {
-  ui.problem.hidden = true;
-  const invalid = checkFile(file);
-  if (invalid) {
-    showProblem(invalid, false);
-    return;
-  }
-  const key = storage.get(KEY_ITEM);
+async function start(files) {
+  hideProblem();
+  const key = getKey();
   if (!key) {
     show('setup');
     return;
   }
-  lastFile = file;
+  lastFiles = files;
+  const mode = getMode();
+  const words = WORDS[mode];
   const controller = new AbortController();
-  job = { controller, started: Date.now(), timer: 0 };
+  job = { controller, started: Date.now(), timer: 0, hidden: document.hidden };
   show('working');
-  ui.statusText.textContent = `Sending ${file.name} (${formatSize(file.size)})…`;
+  setStatus('Getting your file ready…');
   tick();
   job.timer = setInterval(tick, 1000);
   keepAwake();
 
+  let input = null;
   let md = '';
   let paintTimer = 0;
+  const uploaded = [];
   const paint = () => {
     paintTimer = 0;
     ui.handbook.replaceChildren(renderMarkdown(md));
   };
   const progress = {
     gotText: false,
-    stage(name) {
+    stage(name, info = {}) {
       if (progress.gotText) return;
-      ui.statusText.textContent = name === 'thinking' ? 'Planning your handbook…' : 'Reading your notes…';
+      const text = {
+        slides: info.total ? `Reading slide ${info.n} of ${info.total}…` : 'Opening your slides…',
+        photos: `Preparing photo ${info.n} of ${info.total}…`,
+        upload: info.total > 1 ? `Uploading part ${info.n} of ${info.total} to Google…` : 'Uploading your file to Google…',
+        sending: 'Sending to Gemini…',
+        reading: 'Gemini is reading…',
+        thinking: `Planning your ${words.thing}…`,
+      }[name];
+      if (text) setStatus(text);
     },
     text(chunk) {
       if (!progress.gotText) {
         progress.gotText = true;
-        ui.statusText.textContent = 'Writing your handbook…';
+        setStatus(`Writing your ${words.thing}…`);
         ui.handbook.replaceChildren();
         ui.resultNote.hidden = true;
-        ui.printHint.hidden = true;
+        ui.notice.hidden = true;
         ui.actions.hidden = true;
         ui.result.hidden = false;
       }
@@ -256,115 +249,71 @@ async function start(file) {
   };
 
   try {
-    const [skill, pdf] = await Promise.all([loadSkill(), readAsBase64(file)]);
-    const finishReason = await generate({ key, skill, pdf, fileName: file.name, signal: controller.signal }, progress);
+    input = await readInput(files, progress.stage);
+    if (!navigator.onLine) throw new Problem('OFFLINE');
+    const skill = await loadSkill(mode);
+    const parts = await prepareParts([...input.parts, { text: promptFor(input, mode) }], {
+      key, signal: controller.signal, onStage: progress.stage, uploaded,
+    });
+    progress.stage('sending');
+    const result = await generate({ key, skill, parts, signal: controller.signal }, progress);
     clearTimeout(paintTimer);
-    finish(file, md, finishReason);
+    finish(input, md, result, mode);
   } catch (error) {
     clearTimeout(paintTimer);
-    fail(error);
+    fail(error, { md, mode, input });
   } finally {
     clearInterval(job.timer);
     job = null;
     releaseWakeLock();
+    if (uploaded.length) forgetUploads(uploaded, key);
   }
 }
 
-function finish(file, md, finishReason) {
+function finish(input, md, result, mode) {
   const text = md.trim();
   if (/^NO_CONTENT_FOUND/i.test(text)) {
     const reason = text.replace(/^NO_CONTENT_FOUND:?\s*/i, '').split('\n')[0].trim();
-    fail(new Friendly(`Gemini found no study content in ${file.name}${reason ? ` (${reason})` : ''}. If it's a scan, make sure the pages are clear and the right way up.`));
+    fail(new Problem('NO_CONTENT', { name: input.label, reason: reason ? ` (${reason})` : '' }));
     return;
   }
+  const { finishReason } = result;
+  let stopped = null;
+  if (['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII', 'IMAGE_SAFETY'].includes(finishReason)) stopped = new Problem('BLOCKED');
+  else if (finishReason === 'RECITATION') stopped = new Problem('RECITATION');
+  else if (finishReason && !['STOP', 'MAX_TOKENS'].includes(finishReason)) stopped = new Problem('UNKNOWN', { detail: finishReason });
   if (!text) {
-    fail(new Friendly(finishReason && finishReason !== 'STOP'
-      ? `Gemini stopped without writing anything (reason: ${finishReason}). Try again, or try a different PDF.`
-      : 'Gemini sent back an empty answer. Tap Try again.', true));
+    fail(stopped || new Problem('EMPTY_ANSWER'));
     return;
   }
-  let note = '';
-  if (finishReason === 'MAX_TOKENS') {
-    note = 'This handbook stops early because the notes are very long. To cover everything, split the PDF into smaller parts and make a handbook for each part.';
-  } else if (finishReason && finishReason !== 'STOP') {
-    note = `Gemini stopped before the end (reason: ${finishReason}), so this handbook may be incomplete. Choose the PDF again to retry.`;
-  }
-  current = { name: file.name, md: text, note };
+  const notes = [];
+  if (finishReason === 'MAX_TOKENS') notes.push('CUT_SHORT');
+  if (stopped) notes.push('PARTIAL');
+  current = { name: input.label, md: text, mode, notes, backup: result.model === MODELS[0] ? '' : result.backup };
   storage.set(LAST_ITEM, JSON.stringify(current));
   display(current);
   show('pick');
+  if (stopped) showProblem(stopped);
 }
 
-function fail(error) {
-  const { message, retry } = explain(error);
+function fail(error, { md = '', mode = getMode(), input = null } = {}) {
+  const problem = classify(error, {
+    offline: !navigator.onLine,
+    hidden: Boolean(job && job.hidden),
+    partial: Boolean(md.trim()),
+  });
+  if (md.trim() && KEEP_PARTIAL.has(problem.code)) {
+    current = { name: input ? input.label : 'notes', md: md.trim(), mode, notes: ['PARTIAL'], backup: '' };
+    storage.set(LAST_ITEM, JSON.stringify(current));
+  }
   if (current) display(current);
   else ui.handbook.replaceChildren();
   show('pick');
-  showProblem(message, Boolean(retry && lastFile));
-}
-
-function explain(error) {
-  if (error instanceof Friendly) return error;
-  if (error && error.name === 'AbortError') return { message: 'Stopped. Choose a PDF to start again.', retry: true };
-  if (!(error instanceof ApiError)) {
-    return { message: "Couldn't reach Gemini. Check your internet connection and keep this screen open while it works, then tap Try again.", retry: true };
-  }
-  const { status } = error;
-  const everything = `${error.message} ${JSON.stringify(error.details)}`;
-  if (/API_KEY_INVALID|API_KEY_EXPIRED|API key (?:not valid|expired|invalid)/i.test(everything)) {
-    return { message: "Google didn't accept your API key. Tap Change key at the top and paste the key again from Google AI Studio (it usually starts with AIza)." };
-  }
-  if (status === 429) {
-    if (/PerDay/i.test(everything)) {
-      return { message: `You've used up today's free Gemini requests. They reset at ${quotaResetTime()}. Try again after that.` };
-    }
-    return {
-      message: `Gemini's free tier only allows a few requests per minute. Wait ${retryDelay(error.details)}, then tap Try again. If this keeps happening with this PDF, split it into smaller PDFs.`,
-      retry: true,
-    };
-  }
-  if (status === 413 || /payload size|too large/i.test(everything)) {
-    return { message: 'This PDF is too big for Gemini. Split it into smaller parts (for example, one chapter each) and make a handbook for each part.' };
-  }
-  if (/location is not supported/i.test(everything)) {
-    return { message: "Gemini's free API isn't available in your country or region." };
-  }
-  if (status === 401 || status === 403) {
-    return { message: `Google refused this API key (${error.message}). Tap Change key at the top to use a different key.` };
-  }
-  if (status === 404) {
-    return { message: "The AI model this site uses isn't available any more. Ask the site owner to update the model name in app.js." };
-  }
-  if (status >= 500) {
-    return { message: 'Gemini is busy or took too long. Wait a minute, then tap Try again.', retry: true };
-  }
-  if (status === 400) {
-    return { message: `Gemini couldn't use this PDF: ${error.message} If the PDF has a password, remove it first.` };
-  }
-  return { message: `Gemini returned an error (${status}): ${error.message}`, retry: true };
-}
-
-function retryDelay(details) {
-  const info = (details || []).find((item) => item && item.retryDelay);
-  const seconds = info ? Math.ceil(parseFloat(info.retryDelay)) : 0;
-  return seconds > 0 ? `${seconds} seconds` : 'a minute';
-}
-
-// Daily quotas reset at midnight Pacific time; show that moment in the student's own time zone.
-function quotaResetTime() {
-  try {
-    const hourInCalifornia = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hourCycle: 'h23' });
-    let time = Math.ceil(Date.now() / 3600000) * 3600000;
-    for (let i = 0; i < 26; i += 1, time += 3600000) {
-      if (Number(hourInCalifornia.format(time)) === 0) {
-        return `${new Date(time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} your time (midnight in California)`;
-      }
-    }
-  } catch { /* fall through */ }
-  return 'midnight Pacific time';
+  showProblem(problem);
 }
 
 function tick() {
+  if (!job) return;
   const seconds = Math.floor((Date.now() - job.started) / 1000);
   ui.timer.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
@@ -391,34 +340,46 @@ function releaseWakeLock() {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (job && !document.hidden) keepAwake();
+  if (!job) return;
+  if (document.hidden) job.hidden = true;
+  else keepAwake();
 });
 
 ui.keyForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const key = ui.keyInput.value.trim();
   if (!key) return;
-  storage.set(KEY_ITEM, key);
   ui.keyInput.value = '';
-  ui.problem.hidden = true;
+  const saved = storage.set(KEY_ITEM, key);
+  sessionKey = saved ? '' : key;
   show('pick');
+  if (saved) hideProblem();
+  else showProblem(new Problem('STORAGE_BLOCKED'));
 });
 
 ui.changeKey.addEventListener('click', () => show('setup'));
+ui.fixKey.addEventListener('click', () => show('setup'));
 ui.cancelKey.addEventListener('click', () => show('pick'));
 ui.forgetKey.addEventListener('click', () => {
   storage.remove(KEY_ITEM);
+  sessionKey = '';
   show('setup');
 });
 
-ui.fileInput.addEventListener('change', () => {
-  const file = ui.fileInput.files && ui.fileInput.files[0];
-  ui.fileInput.value = '';
-  if (file) start(file);
-});
+for (const picker of [ui.docInput, ui.photoInput]) {
+  picker.addEventListener('change', () => {
+    const files = [...(picker.files || [])];
+    picker.value = '';
+    if (files.length) start(files);
+  });
+}
+
+for (const radio of document.querySelectorAll('input[name="mode"]')) {
+  radio.addEventListener('change', () => storage.set(MODE_ITEM, getMode()));
+}
 
 ui.retry.addEventListener('click', () => {
-  if (lastFile) start(lastFile);
+  if (lastFiles && !ui.retry.disabled) start(lastFiles);
 });
 
 ui.stop.addEventListener('click', () => {
@@ -426,22 +387,28 @@ ui.stop.addEventListener('click', () => {
 });
 
 ui.savePdf.addEventListener('click', () => {
-  // Home Screen web apps on iOS can't print; if no print screen opens, explain the way around it.
+  // Home Screen web apps on iOS can't print; if no print screen opens, say how to get a PDF anyway.
   let opened = false;
   const mark = () => { opened = true; };
   window.addEventListener('beforeprint', mark, { once: true });
-  ui.printHint.hidden = true;
-  window.print();
+  ui.notice.hidden = true;
+  try {
+    window.print();
+  } catch { /* handled by the check below */ }
   setTimeout(() => {
     window.removeEventListener('beforeprint', mark);
-    if (!opened) ui.printHint.hidden = false;
+    if (!opened) {
+      ui.notice.replaceChildren(...noticeNodes(new Problem('PRINT_UNAVAILABLE')));
+      ui.notice.hidden = false;
+    }
   }, 2500);
 });
 
 ui.copy.addEventListener('click', async () => {
   if (!current) return;
+  ui.notice.hidden = true;
   try {
-    if (window.ClipboardItem && navigator.clipboard.write) {
+    if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
       await navigator.clipboard.write([new ClipboardItem({
         'text/plain': new Blob([current.md], { type: 'text/plain' }),
         'text/html': new Blob([ui.handbook.innerHTML], { type: 'text/html' }),
@@ -450,17 +417,25 @@ ui.copy.addEventListener('click', async () => {
       await navigator.clipboard.writeText(current.md);
     }
     ui.copy.textContent = 'Copied';
+    setTimeout(() => { ui.copy.textContent = 'Copy text'; }, 2000);
   } catch {
-    ui.copy.textContent = "Couldn't copy";
+    ui.notice.replaceChildren(...noticeNodes(new Problem('COPY_FAILED')));
+    ui.notice.hidden = false;
   }
-  setTimeout(() => { ui.copy.textContent = 'Copy text'; }, 2000);
 });
 
+if (storage.get(MODE_ITEM) === 'explain') document.querySelector('input[name="mode"][value="explain"]').checked = true;
 try {
   const saved = JSON.parse(storage.get(LAST_ITEM) || 'null');
   if (saved && typeof saved.md === 'string' && saved.md.trim()) {
-    current = { name: String(saved.name || 'notes.pdf'), md: saved.md, note: String(saved.note || '') };
+    current = {
+      name: String(saved.name || 'notes'),
+      md: saved.md,
+      mode: saved.mode === 'explain' ? 'explain' : 'handbook',
+      notes: Array.isArray(saved.notes) ? saved.notes.filter((code) => typeof code === 'string') : [],
+      backup: typeof saved.backup === 'string' ? saved.backup : '',
+    };
     display(current);
   }
 } catch { /* ignore a damaged saved handbook */ }
-show(storage.get(KEY_ITEM) ? 'pick' : 'setup');
+show(getKey() ? 'pick' : 'setup');
