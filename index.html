@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com; base-uri 'none'; form-action 'none'">
+  <title>Handbook Maker</title>
+  <meta name="description" content="Turn class notes and slides (PDF) into a bullet-point handbook you can revise from.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#eef1f6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0e1320" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-title" content="Handbook">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <h1 class="brand">Handbook Maker</h1>
+    <button id="change-key" class="text-button" type="button" hidden>Change key</button>
+  </header>
+
+  <main>
+    <section id="setup" class="panel" hidden>
+      <h2 class="hero">Turn class notes into a handbook you can revise from</h2>
+      <p class="lede">Pick a PDF of typed notes or your teacher's slides. You get short bullet points, highlighted key terms, tables and a one-page revision sheet.</p>
+
+      <div class="sheet sample" role="img" aria-label="Example of a handbook page">
+        <p class="sample-title">Cell organelles</p>
+        <ul>
+          <li><strong>Mitochondria</strong>: release energy from glucose by aerobic respiration.</li>
+          <li><strong>Ribosomes</strong>: make proteins.</li>
+          <li>💡 Memory hook: mitochondria are the cell's power station.</li>
+        </ul>
+      </div>
+
+      <h2>One-time setup</h2>
+      <ol class="steps">
+        <li>
+          <p>Get a free Gemini API key. Sign in with Google, tap <b>Create API key</b>, then copy the key.</p>
+          <a class="button secondary" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Open Google AI Studio</a>
+        </li>
+        <li>
+          <form id="key-form" class="key-form">
+            <label for="key-input">Paste your key here</label>
+            <input id="key-input" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+            <div class="row">
+              <button class="button primary" type="submit">Save key</button>
+              <button id="cancel-key" class="button secondary" type="button" hidden>Cancel</button>
+            </div>
+            <button id="forget-key" class="text-button" type="button" hidden>Remove my key from this phone</button>
+          </form>
+        </li>
+        <li>
+          <p>Optional: add it to your Home Screen. In Safari, open the Share menu and tap <b>Add to Home Screen</b>. If you see <b>Open as Web App</b>, turn it off so Save as PDF works.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="pick" class="panel" hidden>
+      <input id="file-input" class="visually-hidden" type="file" accept="application/pdf,.pdf">
+      <label class="button primary big" for="file-input">Choose a PDF</label>
+      <p class="hint">Up to 50 MB. For PowerPoint or Keynote slides, export them as PDF first.</p>
+      <div id="problem" class="problem" role="alert" hidden>
+        <p id="problem-text"></p>
+        <button id="retry" class="button secondary" type="button" hidden>Try again</button>
+      </div>
+    </section>
+
+    <section id="working" class="panel" hidden>
+      <p id="status-text" class="status" aria-live="polite">Sending your PDF…</p>
+      <p class="hint">Keep this screen open until it's done. Long PDFs can take a few minutes.</p>
+      <div class="row">
+        <span id="timer" class="timer" role="timer">0:00</span>
+        <button id="stop" class="button secondary" type="button">Stop</button>
+      </div>
+    </section>
+
+    <section id="result" hidden>
+      <p id="result-note" class="note" hidden></p>
+      <article id="handbook" class="sheet handbook"></article>
+      <div id="actions" class="actions">
+        <button id="save-pdf" class="button primary" type="button">Save as PDF</button>
+        <button id="copy" class="button secondary" type="button">Copy text</button>
+      </div>
+      <p id="print-hint" class="hint" hidden>If no print screen opened, this page is running as a Home Screen web app, which can't print. Tap Copy text and paste it into Notes or Pages, which can save PDFs. Next time, open the site in Safari, or add it to your Home Screen again with Open as Web App turned off.</p>
+    </section>
+  </main>
+
+  <footer class="privacy">
+    <p>Your key stays on this phone. PDFs go only to Google's Gemini API. On the free tier, Google may use what you send to improve its products, so don't upload anything private.</p>
+  </footer>
+</body>
+</html>
