@@ -10,6 +10,8 @@ const {
 
 test.beforeEach(async ({ page }) => stubPrint(page));
 
+const resultTop = (page) => page.locator('#result').evaluate((el) => Math.round(el.getBoundingClientRect().top));
+
 test('first visit asks for a free key and keeps it only in this browser', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Turn class notes into a handbook you can revise from' })).toBeVisible();
@@ -75,6 +77,23 @@ test('makes a handbook from a PDF, using the handbook skill', async ({ page }) =
 
   await page.reload();
   await expect(page.locator('#handbook h1')).toHaveText('Respiration physiology');
+});
+
+test('a new result is brought into view once, title first, clear of the Save/Share bar', async ({ page }) => {
+  await mockGemini(page, () => answer(HANDBOOK_MD));
+  await saveKey(page);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await page.setInputFiles('#doc-input', pdf());
+  await expect(page.locator('#handbook h1')).toHaveText('Respiration physiology');
+  await expect.poll(() => resultTop(page), { timeout: 5000 }).toBeLessThanOrEqual(20);
+  expect(await resultTop(page)).toBeGreaterThanOrEqual(0);
+  await expect(page.locator('#handbook h1')).toBeInViewport();
+  const overlap = await page.evaluate(() => {
+    const title = document.querySelector('#handbook h1').getBoundingClientRect();
+    const bar = document.getElementById('actions').getBoundingClientRect();
+    return title.bottom > bar.top;
+  });
+  expect(overlap).toBe(false);
 });
 
 test('Explain simply uses the explain skill and is remembered', async ({ page }) => {
@@ -183,21 +202,24 @@ test('model output cannot run script, load anything or link to javascript:', asy
   expect(csp).toContain("connect-src 'self' https://generativelanguage.googleapis.com");
 });
 
-test('Save as PDF and Share open the print screen with the right tip, and print only the handbook', async ({ page }) => {
+test('Save as PDF and Share open the print screen with the right tip, right under the buttons', async ({ page }) => {
   await mockGemini(page, () => answer(HANDBOOK_MD));
   await saveKey(page);
   await page.setInputFiles('#doc-input', pdf('respiration.pdf'));
 
   await page.getByRole('button', { name: 'Save as PDF' }).click();
   expect(await page.evaluate(() => window.__printCalls)).toBe(1);
-  await expect(page.locator('#print-tip')).toHaveText('On the print screen, tap the Share icon at the top, then Save to Files.');
+  const tip = page.locator('#actions #print-tip');
+  await expect(tip).toHaveText('On the print screen, tap the Share icon at the top, then Save to Files.');
+  await expect(tip).toBeInViewport();
   await page.getByRole('button', { name: 'Share' }).click();
   expect(await page.evaluate(() => window.__printCalls)).toBe(2);
-  await expect(page.locator('#print-tip')).toHaveText('On the print screen, tap the Share icon at the top, then pick WhatsApp, Mail, AirDrop or another app.');
+  await expect(tip).toHaveText('On the print screen, tap the Share icon at the top, then pick WhatsApp, Mail, AirDrop or another app.');
+  await expect(tip).toBeInViewport();
   await expect(page).toHaveTitle('Handbook - respiration');
   await page.waitForTimeout(3000);
   await expect(page.locator('#notice')).toBeHidden();
-  await expect(page.locator('#print-tip')).toBeVisible();
+  await expect(tip).toBeVisible();
 
   await page.emulateMedia({ media: 'print' });
   await expect(page.locator('#handbook')).toBeVisible();
@@ -221,9 +243,11 @@ test('when the print screen cannot open (Home Screen web app), both buttons say 
   await page.setInputFiles('#doc-input', pdf());
   for (const name of ['Save as PDF', 'Share']) {
     await page.getByRole('button', { name }).click();
-    await expect(page.locator('#notice')).toContainText("The print screen didn't open");
-    await expect(page.locator('#notice')).toContainText('Open this site in Safari');
-    await expect(page.locator('#notice .code')).toHaveText('Code: PRINT_UNAVAILABLE');
+    const notice = page.locator('#actions #notice');
+    await expect(notice).toContainText("The print screen didn't open");
+    await expect(notice).toContainText('Open this site in Safari');
+    await expect(notice.locator('.code')).toHaveText('Code: PRINT_UNAVAILABLE');
+    await expect(notice).toBeInViewport();
     await expect(page.locator('#print-tip')).toBeHidden();
   }
 });
