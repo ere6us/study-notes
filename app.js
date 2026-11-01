@@ -130,9 +130,10 @@ function display(handbook) {
 }
 
 // Bring the new result into view once when it first appears; after that, never chase the stream.
+// Smooth scrolling never runs while the page is hidden (another app, a locked screen), so jump then.
 function revealResult() {
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  ui.result.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  const instant = document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  ui.result.scrollIntoView({ behavior: instant ? 'auto' : 'smooth', block: 'start' });
 }
 
 // When the pickers come back above a finished result, keep her reading place (or reveal the result
