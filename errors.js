@@ -244,12 +244,7 @@ const CATALOG = {
   },
   PRINT_UNAVAILABLE: {
     title: "The print screen didn't open",
-    body: "iPhone can't print from a Home Screen web app. Tap Copy text and paste it into Notes or Pages, which can save PDFs. Next time, open the site in Safari, or add it to your Home Screen again with Open as Web App turned off.",
-    action: 'none',
-  },
-  COPY_FAILED: {
-    title: "Couldn't copy",
-    body: 'Select the text in the handbook and copy it instead.',
+    body: "iPhone can't print from a Home Screen web app. Open this site in Safari, make this one again there and tap Save as PDF. To fix it for good, add the site to your Home Screen again with Open as Web App turned off.",
     action: 'none',
   },
   UNKNOWN: {
