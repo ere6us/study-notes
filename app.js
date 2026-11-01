@@ -400,16 +400,21 @@ ui.keyForm.addEventListener('submit', (event) => {
   const key = ui.keyInput.value.trim();
   if (!key) return;
   ui.keyInput.value = '';
+  ui.keyInput.blur();
   const saved = storage.set(KEY_ITEM, key);
   sessionKey = saved ? '' : key;
   show('pick');
+  window.scrollTo(0, 0); // start the daily screen at the top, dedication and all
   if (saved) hideProblem();
   else showProblem(new Problem('STORAGE_BLOCKED'));
 });
 
 ui.changeKey.addEventListener('click', () => show('setup'));
 ui.fixKey.addEventListener('click', () => show('setup'));
-ui.cancelKey.addEventListener('click', () => show('pick'));
+ui.cancelKey.addEventListener('click', () => {
+  show('pick');
+  window.scrollTo(0, 0);
+});
 ui.forgetKey.addEventListener('click', () => {
   storage.remove(KEY_ITEM);
   sessionKey = '';
