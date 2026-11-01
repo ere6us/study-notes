@@ -1,9 +1,11 @@
+import { renderDiagram } from './diagram.js';
+
 // A small Markdown renderer that is safe by construction: it builds DOM nodes with
 // createElement and text nodes and never parses HTML, so anything the model writes
 // (<script>, onerror=..., javascript: links) ends up as plain, inert text.
 
 const BLANK = /^\s*$/;
-const FENCE = /^\s{0,3}(`{3,}|~{3,})/;
+const FENCE = /^\s{0,3}(`{3,}|~{3,})\s*([\w-]*)/;
 const HEADING = /^\s{0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/;
 const RULE = /^\s{0,3}([-*_])(?:\s*\1){2,}\s*$/;
 const QUOTE = /^\s{0,3}>\s?(.*)$/;
@@ -38,7 +40,14 @@ function blocks(lines, parent) {
       i += 1;
       while (i < lines.length && !lines[i].trim().startsWith(match[1])) body.push(lines[i++]);
       i += 1;
-      parent.appendChild(node('pre')).append(node('code', body.join('\n')));
+      const diagram = match[2].toLowerCase() === 'diagram' ? renderDiagram(body.join('\n')) : null;
+      if (diagram) {
+        const figure = parent.appendChild(node('figure'));
+        figure.className = 'diagram-figure';
+        figure.append(diagram);
+      } else {
+        parent.appendChild(node('pre')).append(node('code', body.join('\n')));
+      }
     } else if ((match = HEADING.exec(line))) {
       inline(match[2], parent.appendChild(node(`h${match[1].length}`)));
       i += 1;
