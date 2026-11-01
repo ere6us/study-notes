@@ -44,7 +44,6 @@ const ui = {
   handbook: $('handbook'),
   actions: $('actions'),
   savePdf: $('save-pdf'),
-  copy: $('copy'),
   notice: $('notice'),
 };
 
@@ -401,26 +400,6 @@ ui.savePdf.addEventListener('click', () => {
       ui.notice.hidden = false;
     }
   }, 2500);
-});
-
-ui.copy.addEventListener('click', async () => {
-  if (!current) return;
-  ui.notice.hidden = true;
-  try {
-    if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
-      await navigator.clipboard.write([new ClipboardItem({
-        'text/plain': new Blob([current.md], { type: 'text/plain' }),
-        'text/html': new Blob([ui.handbook.innerHTML], { type: 'text/html' }),
-      })]);
-    } else {
-      await navigator.clipboard.writeText(current.md);
-    }
-    ui.copy.textContent = 'Copied';
-    setTimeout(() => { ui.copy.textContent = 'Copy text'; }, 2000);
-  } catch {
-    ui.notice.replaceChildren(...noticeNodes(new Problem('COPY_FAILED')));
-    ui.notice.hidden = false;
-  }
 });
 
 if (storage.get(MODE_ITEM) === 'explain') document.querySelector('input[name="mode"][value="explain"]').checked = true;
