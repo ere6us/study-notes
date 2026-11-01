@@ -245,7 +245,6 @@ body {
 .note > * + * { margin-top: 0.75rem; }
 .note-item p + p { margin-top: 0.25rem; }
 .backup-line { font-size: 0.9375rem; }
-#notice { margin: 1rem 0 0; }
 
 /* Working */
 .working { text-align: center; }
@@ -268,17 +267,16 @@ body {
 .timer { color: var(--berry-soft); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* Result */
-#result { margin: 0 0 1.5rem; }
+#result { margin: 0 0 1.5rem; scroll-margin-top: 0.75rem; }
 .actions {
   position: sticky;
   bottom: 0;
   z-index: 1;
-  display: flex;
-  gap: 0.75rem;
   padding: 1rem 0 calc(0.75rem + env(safe-area-inset-bottom));
   background: linear-gradient(to bottom, rgba(253, 240, 246, 0), var(--blush) 1rem);
 }
-.actions #save-pdf { flex: 1; }
+.action-buttons { display: flex; gap: 0.75rem; }
+.action-buttons #save-pdf { flex: 1; }
 .button.share { flex: 0 0 auto; padding: 0 1.15rem; }
 .share-icon {
   width: 1.15rem;
@@ -289,7 +287,14 @@ body {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.tip { margin: 0.25rem 0 0; color: var(--berry-soft); font-size: 0.9375rem; text-align: center; text-wrap: balance; }
+/* The tip and the "can't print here" notice sit in the sticky bar, right under the buttons she tapped */
+.tip { margin: 0.6rem 0 0; color: var(--berry-soft); font-size: 0.9375rem; line-height: 1.4; text-align: center; text-wrap: balance; }
+.actions .note {
+  margin: 0.75rem 0 0;
+  border-color: var(--rose);
+  background: var(--paper);
+  box-shadow: 0 14px 30px -24px rgba(173, 15, 102, 0.6);
+}
 
 /* Handbook typography */
 .handbook { font-size: 1.0625rem; line-height: 1.6; overflow-wrap: break-word; }
