@@ -17,6 +17,11 @@ const WORDS = {
   handbook: { thing: 'handbook', title: 'Handbook' },
   explain: { thing: 'explanation', title: 'Explained' },
 };
+// Both buttons open the iPhone print screen, which turns the page into a PDF; its Share icon does the rest.
+const PRINT_TIPS = {
+  save: 'On the print screen, tap the Share icon at the top, then Save to Files.',
+  share: 'On the print screen, tap the Share icon at the top, then pick WhatsApp, Mail, AirDrop or another app.',
+};
 
 const $ = (id) => document.getElementById(id);
 const ui = {
@@ -44,6 +49,8 @@ const ui = {
   handbook: $('handbook'),
   actions: $('actions'),
   savePdf: $('save-pdf'),
+  share: $('share'),
+  tip: $('print-tip'),
   notice: $('notice'),
 };
 
@@ -117,6 +124,7 @@ function display(handbook) {
   ui.resultNote.replaceChildren(...notes);
   ui.resultNote.hidden = !notes.length;
   ui.notice.hidden = true;
+  ui.tip.hidden = true;
   const words = WORDS[handbook.mode] || WORDS.handbook;
   document.title = `${words.title} - ${handbook.name.replace(/\.(pdf|pptx)$/i, '')}`;
 }
@@ -237,6 +245,7 @@ async function start(files) {
         ui.handbook.replaceChildren();
         ui.resultNote.hidden = true;
         ui.notice.hidden = true;
+        ui.tip.hidden = true;
         ui.actions.hidden = true;
         ui.result.hidden = false;
       }
@@ -337,6 +346,28 @@ function releaseWakeLock() {
   wakeLock = null;
 }
 
+// Save as PDF and Share both open the print screen. Home Screen web apps on iOS can't print, so if
+// no print screen opens, the tip is replaced by how to get a PDF anyway.
+function printHandbook(kind) {
+  let opened = false;
+  const mark = () => { opened = true; };
+  window.addEventListener('beforeprint', mark, { once: true });
+  ui.notice.hidden = true;
+  ui.tip.textContent = PRINT_TIPS[kind];
+  ui.tip.hidden = false;
+  try {
+    window.print();
+  } catch { /* handled by the check below */ }
+  setTimeout(() => {
+    window.removeEventListener('beforeprint', mark);
+    if (!opened) {
+      ui.tip.hidden = true;
+      ui.notice.replaceChildren(...noticeNodes(new Problem('PRINT_UNAVAILABLE')));
+      ui.notice.hidden = false;
+    }
+  }, 2500);
+}
+
 document.addEventListener('visibilitychange', () => {
   if (!job) return;
   if (document.hidden) job.hidden = true;
@@ -384,23 +415,8 @@ ui.stop.addEventListener('click', () => {
   if (job) job.controller.abort();
 });
 
-ui.savePdf.addEventListener('click', () => {
-  // Home Screen web apps on iOS can't print; if no print screen opens, say how to get a PDF anyway.
-  let opened = false;
-  const mark = () => { opened = true; };
-  window.addEventListener('beforeprint', mark, { once: true });
-  ui.notice.hidden = true;
-  try {
-    window.print();
-  } catch { /* handled by the check below */ }
-  setTimeout(() => {
-    window.removeEventListener('beforeprint', mark);
-    if (!opened) {
-      ui.notice.replaceChildren(...noticeNodes(new Problem('PRINT_UNAVAILABLE')));
-      ui.notice.hidden = false;
-    }
-  }, 2500);
-});
+ui.savePdf.addEventListener('click', () => printHandbook('save'));
+ui.share.addEventListener('click', () => printHandbook('share'));
 
 if (storage.get(MODE_ITEM) === 'explain') document.querySelector('input[name="mode"][value="explain"]').checked = true;
 try {
