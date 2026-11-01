@@ -4,7 +4,7 @@
 const { test, expect } = require('@playwright/test');
 const path = require('path');
 const {
-  EXPLAIN_MD, HANDBOOK_MD, dayLimit, isGenerate, minuteLimit, mockGemini, pdf, png, pptx, respirationDeck, saveKey, stubPrint, answer,
+  EXPLAIN_MD, HANDBOOK_MD, dayLimit, isGenerate, minuteLimit, mockGemini, pdf, png, pptx, respirationDeck, saveKey, sse, stubPrint, thought, answer,
 } = require('./fixtures');
 
 const OUT = path.join(__dirname, 'screenshots');
@@ -19,6 +19,27 @@ async function landed(page) {
   await expect(page.locator('#handbook h1')).toBeVisible();
   await expect.poll(() => page.locator('#result').evaluate((el) => Math.round(el.getBoundingClientRect().top)), { timeout: 5000 }).toBeLessThanOrEqual(20);
   await page.waitForTimeout(300);
+}
+
+// Wait until the newest love note has faded in.
+async function settled(page) {
+  await expect(page.locator('#love .love-line').last()).toHaveCSS('opacity', '1');
+}
+
+/** Gemini's reply as an open stream: the headers arrive at once, and window.__push(text) sends more. */
+async function openStream(page) {
+  await page.evaluate(() => {
+    const realFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      if (!String(input).includes(':streamGenerateContent')) return realFetch(input, init);
+      const body = new ReadableStream({
+        start(controller) {
+          window.__push = (chunk) => controller.enqueue(new TextEncoder().encode(chunk));
+        },
+      });
+      return Promise.resolve(new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } }));
+    };
+  });
 }
 
 test.beforeEach(async ({ page }) => stubPrint(page));
@@ -36,7 +57,8 @@ test('setup and pick screens', async ({ page }) => {
   await shoot(page, '02b-pick-explain-selected');
 });
 
-test('working screen', async ({ page }) => {
+test('working screens, with love notes', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-02T08:00:00Z') });
   let release = () => {};
   const gate = new Promise((resolve) => { release = resolve; });
   const calls = await mockGemini(page, async () => {
@@ -44,12 +66,34 @@ test('working screen', async ({ page }) => {
     return answer(HANDBOOK_MD);
   });
   await saveKey(page);
+  await page.clock.pauseAt(new Date('2026-11-02T09:00:00Z'));
   await page.setInputFiles('#doc-input', pdf());
   await expect.poll(() => calls.filter(isGenerate).length).toBe(1);
-  await page.waitForTimeout(1200);
+  await expect(page.locator('#love .love-line')).not.toHaveCount(0);
+  // Past the upload estimate (15 s for a small file), the headline says Gemini is reading.
+  await page.clock.runFor(16_000);
+  await expect(page.locator('#status-text')).toHaveText('Gemini is reading your notes…');
+  await settled(page);
   await shoot(page, '03-working');
+  // Each full minute brings a "still waiting" line with the time.
+  await page.clock.runFor(45_000);
+  await expect(page.locator('#love .love-line').last()).toHaveText(/\b1 minute\b/);
+  await settled(page);
+  await shoot(page, '03c-working-minute');
   release();
   await expect(page.locator('#handbook h1')).toBeVisible();
+});
+
+test('planning screen, with a love note', async ({ page }) => {
+  await mockGemini(page, () => answer('# Never used'));
+  await saveKey(page);
+  await openStream(page);
+  await page.setInputFiles('#doc-input', pdf());
+  await expect(page.locator('#status-text')).toHaveText('Gemini is reading your notes…');
+  await page.evaluate((chunk) => window.__push(chunk), sse(thought('**Planning the handbook**')));
+  await expect(page.locator('#status-text')).toHaveText('Planning your handbook…');
+  await settled(page);
+  await shoot(page, '03b-working-planning');
 });
 
 test('handbook result, on screen and as printed', async ({ page }) => {
