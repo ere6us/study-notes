@@ -20,7 +20,7 @@ Couture stationery for studying: the app feels like a letterpress card in one co
 ## Type
 
 - **Great Vibes**: only the name and the dedication.
-- **Bodoni Moda**: headings (hero, section titles, handbook headings, notice titles).
+- **Bodoni Moda**: headings (hero, section titles, handbook headings, notice titles), and in italic, the love note under the working status.
 - **Avenir Next** (system font): everything read and tapped.
 
 ## Signature details
@@ -29,7 +29,7 @@ Couture stationery for studying: the app feels like a letterpress card in one co
 - Must-remember and check-yourself boxes are petal cards with a rose hairline.
 - Problems are white cards with a rose hairline, a Bodoni title, a plain body and a small code line. No coloured side stripes.
 - Pill buttons; the mode switch is a petal track with the chosen side on white.
-- One motion: the pink ribbon under the working status, turned off for reduced motion.
+- Motion only while working: the pink ribbon under the status, and the love note's gently beating pink heart, with lines that cross-fade every 7 seconds. All of it stops for reduced motion.
 - Diagrams (flow, cycle, tree) are white boxes with rose edges; the first box is petal; lines and arrowheads are pink.
 
 ## Print
