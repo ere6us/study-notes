@@ -116,16 +116,18 @@ FORM: Invitation-card stationery, a single centred card column.
       <div id="result-note" class="note" hidden></div>
       <article id="handbook" class="sheet handbook"></article>
       <div id="actions" class="actions">
-        <button id="save-pdf" class="button primary" type="button">Save as PDF</button>
-        <button id="share" class="button secondary share" type="button">
-          <svg class="share-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>
-          </svg>
-          <span>Share</span>
-        </button>
+        <div class="action-buttons">
+          <button id="save-pdf" class="button primary" type="button">Save as PDF</button>
+          <button id="share" class="button secondary share" type="button">
+            <svg class="share-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>
+            </svg>
+            <span>Share</span>
+          </button>
+        </div>
+        <p id="print-tip" class="tip" role="status" hidden></p>
+        <div id="notice" class="note" role="status" hidden></div>
       </div>
-      <p id="print-tip" class="tip" role="status" hidden></p>
-      <div id="notice" class="note" role="status" hidden></div>
     </section>
   </main>
 
