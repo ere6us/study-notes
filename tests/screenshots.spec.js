@@ -14,6 +14,13 @@ async function shoot(page, name, fullPage = false) {
   await page.screenshot({ path: path.join(OUT, `${name}.png`), fullPage, animations: 'disabled' });
 }
 
+// Wait until the app has brought the new result into view by itself (no test scrolling).
+async function landed(page) {
+  await expect(page.locator('#handbook h1')).toBeVisible();
+  await expect.poll(() => page.locator('#result').evaluate((el) => Math.round(el.getBoundingClientRect().top)), { timeout: 5000 }).toBeLessThanOrEqual(20);
+  await page.waitForTimeout(300);
+}
+
 test.beforeEach(async ({ page }) => stubPrint(page));
 
 test('setup and pick screens', async ({ page }) => {
@@ -50,11 +57,11 @@ test('handbook result, on screen and as printed', async ({ page }) => {
   await saveKey(page);
   await page.setInputFiles('#doc-input', pdf('respiration-lecture.pdf'));
   await expect(page.locator('#handbook svg.diagram')).toHaveCount(3);
-  await page.locator('#handbook h1').scrollIntoViewIfNeeded();
+  await landed(page);
   await shoot(page, '04-handbook-top');
   await shoot(page, '04-handbook-full', true);
   await page.getByRole('button', { name: 'Share' }).click();
-  await expect(page.locator('#print-tip')).toBeVisible();
+  await expect(page.locator('#actions #print-tip')).toBeInViewport();
   await shoot(page, '05-share-tip');
   await page.emulateMedia({ media: 'print' });
   await shoot(page, '06-handbook-print', true);
@@ -66,6 +73,8 @@ test('Explain simply result', async ({ page }) => {
   await page.getByRole('radio', { name: /Explain simply/ }).check();
   await page.setInputFiles('#doc-input', pdf('breathing.pdf'));
   await expect(page.locator('#handbook h1')).toHaveText('Breathing, explained simply');
+  await landed(page);
+  await shoot(page, '07-explain-top');
   await shoot(page, '07-explain-full', true);
 });
 
@@ -82,11 +91,11 @@ test('PowerPoint and photo flows', async ({ page }) => {
   await expect.poll(() => calls.filter(isGenerate).length).toBe(1);
   await shoot(page, '08-slides-working');
   release();
-  await expect(page.locator('#handbook h1')).toBeVisible();
-  await page.locator('#handbook h1').scrollIntoViewIfNeeded();
+  await landed(page);
   await shoot(page, '09-slides-result');
 
   gate = new Promise((resolve) => { release = resolve; });
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.setInputFiles('#photo-input', [
     { name: 'whiteboard.png', mimeType: 'image/png', buffer: png(1600, 1200) },
     { name: 'textbook-page.png', mimeType: 'image/png', buffer: png(1200, 1600) },
@@ -94,8 +103,7 @@ test('PowerPoint and photo flows', async ({ page }) => {
   await expect.poll(() => calls.filter(isGenerate).length).toBe(2);
   await shoot(page, '10-photos-working');
   release();
-  await expect(page.locator('#handbook h1')).toBeVisible();
-  await page.locator('#handbook h1').scrollIntoViewIfNeeded();
+  await landed(page);
   await shoot(page, '11-photos-result');
 });
 
