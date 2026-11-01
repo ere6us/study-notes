@@ -129,6 +129,20 @@ function display(handbook) {
   document.title = `${words.title} - ${handbook.name.replace(/\.(pdf|pptx)$/i, '')}`;
 }
 
+// Bring the new result into view once when it first appears; after that, never chase the stream.
+function revealResult() {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  ui.result.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+}
+
+// When the pickers come back above a finished result, keep her reading place (or reveal the result
+// if it arrived all at once). A problem message, which scrolls itself into view, takes priority.
+function placeResult(before) {
+  if (ui.result.hidden || !ui.problem.hidden) return;
+  if (before === null) revealResult();
+  else window.scrollBy(0, ui.handbook.getBoundingClientRect().top - before);
+}
+
 function showProblem(problem) {
   const info = describe(problem);
   ui.problemTitle.textContent = info.title;
@@ -220,12 +234,9 @@ async function start(files) {
   let md = '';
   let paintTimer = 0;
   const uploaded = [];
-  const paint = () => {
-    paintTimer = 0;
-    ui.handbook.replaceChildren(renderMarkdown(md));
-  };
   const progress = {
     gotText: false,
+    revealed: false,
     stage(name, info = {}) {
       if (progress.gotText) return;
       const text = {
@@ -253,6 +264,14 @@ async function start(files) {
       if (!paintTimer) paintTimer = setTimeout(paint, 200);
     },
   };
+  const paint = () => {
+    paintTimer = 0;
+    ui.handbook.replaceChildren(renderMarkdown(md));
+    if (!progress.revealed) {
+      progress.revealed = true;
+      revealResult();
+    }
+  };
 
   try {
     input = await readInput(files, progress.stage);
@@ -264,7 +283,9 @@ async function start(files) {
     progress.stage('sending');
     const result = await generate({ key, skill, parts, signal: controller.signal }, progress);
     clearTimeout(paintTimer);
+    const before = progress.revealed ? ui.handbook.getBoundingClientRect().top : null;
     finish(input, md, result, mode);
+    placeResult(before);
   } catch (error) {
     clearTimeout(paintTimer);
     fail(error, { md, mode, input });
