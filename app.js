@@ -2,6 +2,7 @@ import { renderMarkdown } from './markdown.js';
 import { Problem, classify, describe } from './errors.js';
 import { readInput } from './inputs.js';
 import { MODELS, forgetUploads, generate, prepareParts } from './gemini.js';
+import { loadLoveNotes, startLoveNotes } from './love-notes.js';
 
 const SKILLS = { handbook: 'skills/handbook/SKILL.md', explain: 'skills/explain/SKILL.md' };
 const FRONTMATTER = /^\uFEFF?---\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/;
@@ -21,6 +22,19 @@ const WORDS = {
 const PRINT_TIPS = {
   save: 'On the print screen, tap the Share icon at the top, then Save to Files.',
   share: 'On the print screen, tap the Share icon at the top, then pick WhatsApp, Mail, AirDrop or another app.',
+};
+const READING = 'Gemini is reading your notes…';
+// fetch can't report upload progress, so the status moves on from sending to reading after a
+// guess: the time the request takes at a cautious 250 KB/s, and at least 15 seconds.
+const SEND_SPEED = 250 * 1024;
+// The love-notes.md stage that each step of the work takes its lines from.
+const LOVE_STAGES = {
+  slides: 'getting ready',
+  photos: 'getting ready',
+  upload: 'sending',
+  sending: 'sending',
+  reading: 'reading',
+  thinking: 'planning',
 };
 
 const $ = (id) => document.getElementById(id);
@@ -42,6 +56,7 @@ const ui = {
   fixKey: $('fix-key'),
   working: $('working'),
   statusText: $('status-text'),
+  love: $('love'),
   timer: $('timer'),
   stop: $('stop'),
   result: $('result'),
@@ -200,6 +215,9 @@ function promptFor(input, mode) {
   return mode === 'explain' ? `Explain ${what} simply, so I can understand it.` : `Make my study handbook from ${what}.`;
 }
 
+// What goes up with the request: inline data (as base64) and text.
+const payloadSize = (parts) => parts.reduce((sum, part) => sum + (part.inlineData ? part.inlineData.data.length : (part.text || '').length), 0);
+
 async function loadSkill(mode) {
   let response;
   try {
@@ -224,9 +242,11 @@ async function start(files) {
   const mode = getMode();
   const words = WORDS[mode];
   const controller = new AbortController();
-  job = { controller, started: Date.now(), timer: 0, hidden: document.hidden };
+  const love = startLoveNotes(ui.love, { notes: loadLoveNotes(), thing: words.thing });
+  job = { controller, started: Date.now(), timer: 0, hidden: document.hidden, minutes: 0, love };
   show('working');
   setStatus('Getting your file ready…');
+  love.use('getting ready');
   tick();
   job.timer = setInterval(tick, 1000);
   keepAwake();
@@ -238,22 +258,33 @@ async function start(files) {
   const progress = {
     gotText: false,
     revealed: false,
+    step: '',
+    readingTimer: 0,
     stage(name, info = {}) {
       if (progress.gotText) return;
+      progress.step = name;
       const text = {
         slides: info.total ? `Reading slide ${info.n} of ${info.total}…` : 'Opening your slides…',
         photos: `Preparing photo ${info.n} of ${info.total}…`,
         upload: info.total > 1 ? `Uploading part ${info.n} of ${info.total} to Google…` : 'Uploading your file to Google…',
         sending: 'Sending to Gemini…',
-        reading: 'Gemini is reading…',
+        reading: READING,
         thinking: `Planning your ${words.thing}…`,
       }[name];
       if (text) setStatus(text);
+      if (LOVE_STAGES[name]) love.use(LOVE_STAGES[name]);
+      if (name === 'sending') {
+        const wait = info.bytes ? Math.max(15000, (info.bytes / SEND_SPEED) * 1000) : 20000;
+        progress.readingTimer = setTimeout(() => {
+          if (progress.step === 'sending') progress.stage('reading');
+        }, wait);
+      }
     },
     text(chunk) {
       if (!progress.gotText) {
         progress.gotText = true;
         setStatus(`Writing your ${words.thing}…`);
+        love.use('writing');
         ui.handbook.replaceChildren();
         ui.resultNote.hidden = true;
         ui.notice.hidden = true;
@@ -281,7 +312,7 @@ async function start(files) {
     const parts = await prepareParts([...input.parts, { text: promptFor(input, mode) }], {
       key, signal: controller.signal, onStage: progress.stage, uploaded,
     });
-    progress.stage('sending');
+    progress.stage('sending', { bytes: payloadSize(parts) });
     const result = await generate({ key, skill, parts, signal: controller.signal }, progress);
     clearTimeout(paintTimer);
     const before = progress.revealed ? ui.handbook.getBoundingClientRect().top : null;
@@ -291,7 +322,9 @@ async function start(files) {
     clearTimeout(paintTimer);
     fail(error, { md, mode, input });
   } finally {
+    clearTimeout(progress.readingTimer);
     clearInterval(job.timer);
+    love.stop();
     job = null;
     releaseWakeLock();
     if (uploaded.length) forgetUploads(uploaded, key);
@@ -345,6 +378,12 @@ function tick() {
   if (!job) return;
   const seconds = Math.floor((Date.now() - job.started) / 1000);
   ui.timer.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  // At every full minute of the run, a "still waiting" love note with the time.
+  const minutes = Math.floor(seconds / 60);
+  if (minutes > job.minutes) {
+    job.minutes = minutes;
+    job.love.minute(minutes);
+  }
 }
 
 // Keep the screen on while Gemini works (Safari 16.4+); harmless where unsupported.
