@@ -8,6 +8,13 @@ const {
 } = require('./fixtures');
 
 const OUT = path.join(__dirname, 'screenshots');
+const ASK_ANSWER = [
+  'The **conducting zone** is the set of tubes that only moves air. Their walls are too thick for oxygen to cross.',
+  '',
+  '- It warms, cleans and moistens the air on the way in.',
+  '- Gas exchange needs the very thin walls of the **alveoli**.',
+  '- Beyond your notes: think of the airways as the hallway, and the alveoli as the rooms where the work happens.',
+].join('\n');
 
 async function shoot(page, name, fullPage = false) {
   await page.evaluate(() => document.fonts.ready);
@@ -177,4 +184,46 @@ test('error screens', async ({ page }) => {
   await page.setInputFiles('#doc-input', { name: 'lecture.key', mimeType: 'application/x-iwork-keynote-sffkey', buffer: Buffer.from('keynote') });
   await expect(page.locator('#problem-code')).toHaveText('Code: KEYNOTE');
   await shoot(page, '15-error-unsupported-file');
+});
+
+test('asking about a passage', async ({ page }) => {
+  let release = () => {};
+  const gate = new Promise((resolve) => { release = resolve; });
+  await mockGemini(page, async (call) => {
+    const prompt = String((call.body && call.body.contents && call.body.contents[0].parts[0].text) || '');
+    if (!prompt.includes('<passage>')) return answer(HANDBOOK_MD);
+    await gate;
+    return answer(ASK_ANSWER);
+  });
+  await saveKey(page);
+  await page.setInputFiles('#doc-input', pdf('respiration-lecture.pdf'));
+  await landed(page);
+
+  const item = page.locator('#handbook li', { hasText: 'Conducting zone' }).first();
+  await item.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const selection = document.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+  await expect(page.locator('#ask')).toBeVisible();
+  await shoot(page, '16-ask-selection');
+
+  await page.locator('#ask').click();
+  await expect(page.locator('#ask-dialog')).toBeVisible();
+  await page.locator('#ask-input').fill('Why does no gas exchange happen here?');
+  await shoot(page, '17-ask-form');
+
+  await page.locator('#ask-send').click();
+  const box = item.locator(':scope > .qa');
+  await expect(box.locator('.love .love-line').last()).toHaveCSS('opacity', '1');
+  await shoot(page, '18-ask-answering');
+
+  release();
+  await expect(box).toHaveAttribute('data-state', 'done');
+  await page.waitForTimeout(300);
+  await shoot(page, '19-ask-answer');
+  await page.emulateMedia({ media: 'print' });
+  await shoot(page, '20-ask-print', true);
 });
