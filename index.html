@@ -2,7 +2,7 @@
 <!--
 THESIS: Couture stationery for studying. The handbook arrives like a letterpress card in confident pink, not a generic AI-tool screen of grey cards.
 OWN-WORLD: Blush paper ground, white card stock, deep berry ink, one confident pink (Pantone 219-like #da1884) for actions and marks, champagne-gold hairlines. Great Vibes script only for the name and the dedication; Bodoni Moda for headings; Avenir Next for everything read and tapped. Key terms get a pink highlighter swipe.
-STORY: She opens it every day, sees it was made for her, picks notes, slides or photos, and gets a handbook to memorize or a simple explanation, then saves it as a PDF.
+STORY: She opens it every day, sees it was made for her, picks notes, slides or photos, and gets a handbook to memorize or a simple explanation, then saves or shares it as a PDF.
 FIRST VIEWPORT: Centred script name and dedication over a short gold rule; below, the two-way mode switch and two big pink pickers within thumb reach.
 FORM: Invitation-card stationery, a single centred card column.
 -->
@@ -117,8 +117,14 @@ FORM: Invitation-card stationery, a single centred card column.
       <article id="handbook" class="sheet handbook"></article>
       <div id="actions" class="actions">
         <button id="save-pdf" class="button primary" type="button">Save as PDF</button>
-        <button id="copy" class="button secondary" type="button">Copy text</button>
+        <button id="share" class="button secondary share" type="button">
+          <svg class="share-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>
+          </svg>
+          <span>Share</span>
+        </button>
       </div>
+      <p id="print-tip" class="tip" role="status" hidden></p>
       <div id="notice" class="note" role="status" hidden></div>
     </section>
   </main>
