@@ -8,8 +8,6 @@ const FRONTMATTER = /^\uFEFF?---\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/;
 const KEY_ITEM = 'handbook.geminiKey';
 const LAST_ITEM = 'handbook.last';
 const MODE_ITEM = 'handbook.mode';
-// Keep what was already written when one of these stops the answer part-way.
-const KEEP_PARTIAL = new Set(['CONNECTION_LOST', 'SUSPENDED', 'NETWORK', 'OFFLINE', 'BLOCKED', 'RECITATION', 'STOPPED', 'TIMEOUT', 'BUSY', 'UNKNOWN']);
 const BACKUP_LINES = {
   day: "Made with Google's backup model because today's main free limit is used up.",
   'no-quota': "Made with Google's backup model because the main one has no free allowance on this key.",
@@ -302,7 +300,8 @@ function fail(error, { md = '', mode = getMode(), input = null } = {}) {
     hidden: Boolean(job && job.hidden),
     partial: Boolean(md.trim()),
   });
-  if (md.trim() && KEEP_PARTIAL.has(problem.code)) {
+  // Whatever stopped it, keep what was already written so it can still be read and saved.
+  if (md.trim()) {
     current = { name: input ? input.label : 'notes', md: md.trim(), mode, notes: ['PARTIAL'], backup: '' };
     storage.set(LAST_ITEM, JSON.stringify(current));
   }
