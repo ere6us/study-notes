@@ -8,7 +8,7 @@ const {
   ROOT, answer, isGenerate, mockGemini, pdf, saveKey, sse, stubPrint, text, thought,
 } = require('./fixtures');
 
-const STAGES = ['getting ready', 'sending', 'reading', 'planning', 'writing', 'still waiting'];
+const STAGES = ['getting ready', 'sending', 'reading', 'planning', 'writing', 'still waiting', 'answering'];
 const SENDING = ['Sending, one.', 'Sending, two.', 'Sending, three.', 'Sending, four.'];
 const READING = 'Gemini is reading your notes…';
 const T0 = new Date('2026-11-02T08:00:00Z');

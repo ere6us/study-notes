@@ -91,3 +91,11 @@ Edit freely on GitHub: the next run uses the new lines.
 - {time}. Still working. If anything goes wrong, you'll see exactly what to do.
 - {time}. Still here, still working, still yours.
 - {time}. Big files are slow. Love is patient.
+
+## Answering
+- Good question. Atif would be proud.
+- Finding the simplest way to say it.
+- Looking through your notes for the answer.
+- Thinking about your question. Atif is thinking about you.
+- One clear answer, coming up.
+- Asking questions is how the brightest minds learn.

@@ -10,9 +10,9 @@ Couture stationery for studying: the app feels like a letterpress card in one co
 | Paper | `#ffffff` | Cards and the handbook sheet |
 | Petal | `#fbe2ef` | Soft fills: mode switch, notes, table headers, must-remember boxes |
 | Rose | `#f2b8d3` | Hairline borders |
-| Pink | `#da1884` | The one loud colour: primary buttons, bullets, diagram lines |
+| Pink | `#da1884` | The one loud colour: primary buttons, bullets, diagram lines, answer-box edges |
 | Pink deep | `#ad0f66` | Pressed state, links, small pink text |
-| Berry | `#4a0e2e` | Ink for all body text |
+| Berry | `#4a0e2e` | Ink for all body text, and the Ask about this button |
 | Berry soft | `#7d3a5d` | Secondary text (about 7:1 on blush) |
 | Gold | `#c9a46a` | Champagne hairlines only, never text |
 | Marker | `#ffbfdd` | Highlighter behind key terms |
@@ -20,7 +20,7 @@ Couture stationery for studying: the app feels like a letterpress card in one co
 ## Type
 
 - **Great Vibes**: only the name and the dedication.
-- **Bodoni Moda**: headings (hero, section titles, handbook headings, notice titles), and in italic, the love note under the working status.
+- **Bodoni Moda**: headings (hero, section titles, handbook headings, notice titles), and in italic, the love note under the working status and the quoted words in the ask form and answer boxes.
 - **Avenir Next** (system font): everything read and tapped.
 
 ## Signature details
@@ -31,7 +31,9 @@ Couture stationery for studying: the app feels like a letterpress card in one co
 - Pill buttons; the mode switch is a petal track with the chosen side on white.
 - Motion only while working: the pink ribbon under the status, and the love note's gently beating pink heart, with lines that cross-fade every 7 seconds. All of it stops for reduced motion.
 - Diagrams (flow, cycle, tree) are white boxes with rose edges; the first box is petal; lines and arrowheads are pink.
+- Asking: selected words get a soft pink tint, and **Ask about this** appears as the one berry-ink pill, full width above Save as PDF and Share. The ask form is a white card near the top of the screen (so the keyboard never covers it) with petal chips for the quick questions.
+- Answers are blush cards with a pink hairline, right under their passage: the selected words in small Bodoni italic, "You asked" in bold, then the answer, with a small × to remove it.
 
 ## Print
 
-Save as PDF prints only the handbook: white page, berry ink, pink accents and diagrams kept with `print-color-adjust: exact`. The revision sheet starts on a new page.
+Save as PDF prints only the handbook: white page, berry ink, pink accents and diagrams kept with `print-color-adjust: exact`. The revision sheet starts on a new page. Answer boxes print under their passages and never split across pages; the × buttons don't print.

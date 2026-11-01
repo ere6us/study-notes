@@ -306,7 +306,7 @@ body {
 .action-buttons { display: flex; gap: 0.75rem; }
 .action-buttons #save-pdf { flex: 1; }
 .button.share { flex: 0 0 auto; padding: 0 1.15rem; }
-.share-icon {
+.share-icon, .ask-icon {
   width: 1.15rem;
   height: 1.15rem;
   fill: none;
@@ -323,6 +323,17 @@ body {
   background: var(--paper);
   box-shadow: 0 14px 30px -24px rgba(173, 15, 102, 0.6);
 }
+/* Ask about this: the one berry-ink pill, above Save as PDF and Share while words are selected */
+.button.ask {
+  width: 100%;
+  margin-bottom: 0.6rem;
+  border-color: var(--berry);
+  background: var(--berry);
+  color: #ffffff;
+  box-shadow: 0 10px 20px -14px rgba(74, 14, 46, 0.9);
+}
+.button.ask:active { background: #2f0a1d; }
+.button.ask:disabled { border-color: var(--rose); background: var(--petal); color: var(--berry-soft); box-shadow: none; }
 
 /* Handbook typography */
 .handbook { font-size: 1.0625rem; line-height: 1.6; overflow-wrap: break-word; }
@@ -360,6 +371,7 @@ body {
 .handbook pre code { padding: 0; background: none; font-size: 0.85em; }
 .handbook hr { margin: 1.5em 0; border: 0; border-top: 1px solid var(--gold); }
 .handbook a { color: var(--pink-deep); }
+.handbook ::selection { background: rgba(218, 24, 132, 0.2); }
 .table-wrap { margin: 1em 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .handbook table { min-width: 100%; border-collapse: collapse; font-size: 0.95em; line-height: 1.4; }
 .handbook th, .handbook td { padding: 0.5em 0.65em; border: 1px solid var(--rose); text-align: left; vertical-align: top; }
@@ -377,6 +389,118 @@ body {
 .dg-line { fill: none; stroke: var(--pink); stroke-width: 1.6; }
 .dg-head { fill: var(--pink); }
 .dg-note { fill: var(--berry-soft); font-size: 12px; font-style: italic; }
+
+/* Questions: a blush card with a pink hairline, right under the passage it's about */
+.qa {
+  position: relative;
+  margin: 0.9em 0 1.1em;
+  padding: 0.8em 1em 0.95em;
+  border: 1.5px solid var(--pink);
+  border-radius: 16px;
+  background: #fff6fa;
+  font-size: 0.97em;
+  line-height: 1.55;
+  scroll-margin: 1rem 0 11rem;
+}
+li > .qa { margin: 0.5em 0 0.8em; }
+.qa .qa-quote { margin: 0 2.4rem 0.3em 0; color: var(--berry-soft); font: italic 400 0.9em/1.4 var(--font-display); }
+.qa .qa-question { margin: 0 2.4rem 0.5em 0; font-weight: 700; }
+.qa-answer > :first-child { margin-top: 0; }
+.qa-answer > :last-child { margin-bottom: 0; }
+/* Answers under a list item would otherwise get nested-list bullets */
+.qa-answer ul { list-style-type: disc; }
+.qa-answer ul ul { list-style-type: circle; }
+.qa-answer h1, .qa-answer h2, .qa-answer h3, .qa-answer h4, .qa-answer h5, .qa-answer h6 {
+  margin: 0.8em 0 0.3em;
+  padding: 0;
+  border: 0;
+  color: var(--berry);
+  font-size: 1.0625rem;
+}
+.qa-remove {
+  position: absolute;
+  top: 0.1rem;
+  right: 0.1rem;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--pink-deep);
+  font: 400 1.5rem/1 var(--font-ui);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.qa-remove:focus-visible { outline: 3px solid var(--pink); outline-offset: -6px; }
+.qa .qa-wait-title { margin: 0; color: var(--pink-deep); font: 600 1rem/1.3 var(--font-display); }
+.qa .love { min-height: 0; max-width: none; margin: 0.3rem 0 0; font-size: 0.9375rem; text-align: left; }
+.qa-problem { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--rose); }
+.qa .qa-problem p { margin: 0; }
+.qa-orphans { margin-top: 2em; }
+
+/* The ask form: a card near the top of the screen, so the iPhone keyboard never covers it */
+.ask-dialog {
+  width: min(34rem, calc(100% - 1.5rem));
+  max-width: calc(100% - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  margin: max(0.75rem, env(safe-area-inset-top)) auto auto;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--rose);
+  border-radius: 22px;
+  background: var(--paper);
+  color: var(--berry);
+  box-shadow: 0 28px 56px -28px rgba(74, 14, 46, 0.6);
+}
+.ask-dialog::backdrop { background: rgba(74, 14, 46, 0.32); }
+.ask-form { padding: 1.1rem 1.15rem 1.25rem; }
+.ask-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.ask-title { margin: 0; font: 600 1.375rem/1.2 var(--font-display); }
+.ask-title:focus { outline: none; }
+.ask-quote {
+  display: -webkit-box;
+  margin: 0.45rem 0 0;
+  overflow: hidden;
+  color: var(--berry-soft);
+  font: italic 400 1rem/1.45 var(--font-display);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+.chip {
+  min-height: 2.6rem;
+  padding: 0 1rem;
+  border: 1px solid var(--rose);
+  border-radius: 999px;
+  background: var(--petal);
+  color: var(--pink-deep);
+  font: 600 0.9375rem/1 var(--font-ui);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.chip:active { background: var(--rose); }
+.chip:disabled { opacity: 0.5; cursor: default; }
+.chip:focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; }
+.ask-label { display: block; margin: 1.1rem 0 0.45rem; font-weight: 600; }
+.ask-row { display: flex; align-items: flex-end; gap: 0.6rem; }
+.ask-row textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 3.1rem;
+  padding: 0.65rem 0.9rem;
+  border: 1.5px solid var(--rose);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--berry);
+  font: 1.0625rem/1.4 var(--font-ui);
+  resize: none;
+}
+.ask-row textarea:focus { border-color: var(--pink); outline: 3px solid var(--petal); outline-offset: 0; }
+.ask-row .button { flex: 0 0 auto; padding: 0 1.3rem; }
 
 .privacy {
   padding-top: 0.5rem;
@@ -404,7 +528,7 @@ body {
 @media print {
   @page { margin: 15mm 14mm; }
   body { padding: 0; background: #ffffff; }
-  .masthead, .privacy, #setup, #pick, #working, #actions, #print-tip, #notice, #result-note { display: none !important; }
+  .masthead, .privacy, #setup, #pick, #working, #actions, #print-tip, #notice, #result-note, .ask-dialog { display: none !important; }
   main { max-width: none; padding: 0; }
   main .handbook { margin: 0; padding: 0; border: 0; font-size: 11.5pt; line-height: 1.45; }
   .handbook h1 { font-size: 22pt; }
@@ -414,6 +538,9 @@ body {
   .handbook .new-page { padding-top: 0; border-top: 0; break-before: page; page-break-before: always; }
   .table-wrap { overflow: visible; }
   .diagram { max-width: 12cm; }
+  /* Answers print under their passages; the Remove button, waiting lines and unanswered boxes don't. */
+  .qa { break-inside: avoid; page-break-inside: avoid; }
+  .qa-remove, .qa-wait, .qa-problem, .qa:not([data-state="done"]) { display: none !important; }
   .handbook, .handbook * {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
