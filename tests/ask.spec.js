@@ -23,8 +23,10 @@ test.beforeEach(async ({ page }) => stubPrint(page));
 
 const asks = (calls) => calls.filter(isGenerate);
 const conducting = (page) => page.locator('#handbook li', { hasText: 'Conducting zone' }).first();
+// The handbook's own paragraph (answer boxes quote it too, so only direct children count).
+const dontMix = (page) => page.locator('#handbook > p', { hasText: "Don't mix these up" });
 const boxIn = (item) => item.locator(':scope > .qa');
-const savedQa = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('handbook.last') || '{}').qa);
+const savedQa = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('handbook.last') || '{}').qa || []);
 
 /** Opens the app with a handbook she made earlier, as saved on her phone. */
 async function openHandbook(page) {
@@ -238,7 +240,7 @@ test('each answer sits right under its passage: list item, paragraph, table, mus
   await mockGemini(page, () => answer('A short answer.'));
   await openHandbook(page);
   const item = conducting(page);
-  const paragraph = page.locator('#handbook p', { hasText: "Don't mix these up" });
+  const paragraph = dontMix(page);
   const table = page.locator('#handbook .table-wrap');
   const mustRemember = page.locator('#handbook blockquote', { hasText: 'Gas exchange only happens' });
   const figure = page.locator('#handbook figure.diagram-figure', { has: page.locator('svg.diagram-flow') });
@@ -410,7 +412,7 @@ test('while it answers, the box shows a love note, and Ask waits for one questio
   expect(ANSWERING).toContain(await line.textContent());
   await expect(box.locator('.love')).toHaveAttribute('aria-hidden', 'true');
 
-  await select(page.locator('#handbook p', { hasText: "Don't mix these up" }));
+  await select(dontMix(page));
   await expect(page.locator('#ask')).toBeVisible();
   await expect(page.locator('#ask')).toBeDisabled();
   release();

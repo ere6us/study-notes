@@ -407,6 +407,9 @@ li > .qa { margin: 0.5em 0 0.8em; }
 .qa .qa-question { margin: 0 2.4rem 0.5em 0; font-weight: 700; }
 .qa-answer > :first-child { margin-top: 0; }
 .qa-answer > :last-child { margin-bottom: 0; }
+/* Answers under a list item would otherwise get nested-list bullets */
+.qa-answer ul { list-style-type: disc; }
+.qa-answer ul ul { list-style-type: circle; }
 .qa-answer h1, .qa-answer h2, .qa-answer h3, .qa-answer h4, .qa-answer h5, .qa-answer h6 {
   margin: 0.8em 0 0.3em;
   padding: 0;
