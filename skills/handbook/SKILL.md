@@ -20,9 +20,10 @@ Turn the student's class material into a handbook they can read, memorize and re
 
 - Use plain, simple words and short bullets: one idea per bullet, about 20 words at most.
 - **Bold** the key terms a student must be able to recall.
-- Definitions go on one bullet: `**Term**: meaning`, using the wording from the material.
-- Put each formula on its own bullet inside backticks, using plain text and Unicode symbols (², √, π, Δ, ≤, →), never LaTeX. On the next bullet, say what each symbol means.
+- Definitions go on one bullet: `**Term**: meaning`, using the wording from the material. Only when a definition is hard to follow, add one more bullet starting with `In simple words:` that says the same thing plainly.
+- Put each formula on its own bullet inside backticks, using plain text and Unicode symbols (², √, π, Δ, ≤, →, O₂, CO₂), never LaTeX. On the next bullet, say what each symbol means.
 - Use a table to compare two or more things (differences, types, properties, pros and cons).
+- Where the material has a pair that is easy to confuse (for example inspiration and expiration, or external and internal respiration), add a small side-by-side table under a bold line `**Don't mix these up**`, using only facts from the material.
 - Use a numbered list for steps, processes and sequences.
 - For diagrams, charts and pictures, describe what they show in 1–3 bullets.
 - Where it helps something stick, add a memory hook (mnemonic, acronym, rhyme or simple analogy) as a bullet starting with `💡 Memory hook:`. Never invent facts in a hook.
@@ -33,10 +34,14 @@ When a process, cycle or classification is easier to see than to read, draw it a
 
 ```diagram
 type: flow
-title: How a bill becomes law
-- Bill is introduced
-- Both houses pass it
-- President signs it
+title: Path of air into the lungs
+- Nose
+- Pharynx
+- Larynx
+- Trachea
+- Bronchi
+- Bronchioles
+- Alveoli
 ```
 
 - `flow`: steps in order, top to bottom (2–8 steps).
@@ -56,7 +61,9 @@ Keep each item under 8 words, and use only facts from the material. Draw at most
    > - the 3–5 most exam-worthy points of this section
    ```
 
-4. Finish with `## One-page revision sheet`: the whole material squeezed onto one printed page. Use very short bullets with the key terms, formulas and facts, grouped by section.
+4. `## One-page revision sheet`: the whole material squeezed onto one printed page, at most about 20 short lines. Key terms, formulas and facts, grouped by section.
+5. `## Test yourself`: 8–10 numbered questions that can be answered from the handbook alone. Mix three kinds: recall ("What is …?"), apply ("What happens to … when …?") and "why this, not that" ("Why does … happen in the alveoli and not the bronchi?").
+6. `## Answers`: short answers, numbered to match the questions.
 
 ## Output
 
