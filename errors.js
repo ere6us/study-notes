@@ -92,6 +92,11 @@ const CATALOG = {
     body: "Google's free plan allows a set number each day, and today's are used up. They reset at {reset}. Everything you've already made stays here.",
     action: 'none',
   },
+  ASK_LIMIT_DAY: {
+    title: "You've used today's free questions",
+    body: "Google's free plan allows a set number each day, and today's are used up. They reset at {reset}. Your handbook and earlier answers stay here.",
+    action: 'none',
+  },
   BUSY: {
     title: 'Gemini is busy right now',
     body: "Google's servers are overloaded. Wait a minute, then tap Try again.",

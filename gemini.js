@@ -4,6 +4,9 @@ const BASE = 'https://generativelanguage.googleapis.com';
 // Free-tier models, best first. Each has its own free daily allowance, so moving down the list
 // stretches what the free plan gives. All three are stable with no announced shutdown date.
 export const MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+// Questions about a handbook are short, so they start with the lightest model and its own free
+// daily allowance, which keeps the bigger models' allowances for handbooks.
+export const ASK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.8-flash'];
 // Only tried if every model above has been retired (404).
 export const LAST_RESORT = 'gemini-flash-latest';
 // Google caps a whole request with inline data at 20 MB; stay under it and upload anything bigger.
@@ -127,13 +130,14 @@ export function forgetUploads(names, key) {
   }
 }
 
-// Streams one answer. Moves to the next free model only when a model is gone (404), has no free
-// quota (limit: 0) or has used today's free requests; never on a per-minute limit, and never once
-// text has started arriving. Returns { finishReason, model, backup } where backup says why the
-// main model wasn't used ('day', 'no-quota', 'gone' or '').
-export async function generate(request, progress) {
+// Streams one answer, trying models in order (MODELS, or ASK_MODELS for questions). Moves to the
+// next free model only when a model is gone (404), has no free quota (limit: 0) or has used today's
+// free requests; never on a per-minute limit, and never once text has started arriving. Returns
+// { finishReason, model, backup } where backup says why the first model wasn't used ('day',
+// 'no-quota', 'gone' or '').
+export async function generate(request, progress, models = MODELS) {
   const reasons = [];
-  for (const model of [...MODELS, LAST_RESORT]) {
+  for (const model of [...models, LAST_RESORT]) {
     if (model === LAST_RESORT && !reasons.every((reason) => reason === 'gone')) break;
     try {
       const finishReason = await stream({ ...request, model }, progress);
@@ -158,15 +162,16 @@ function unavailable(error) {
   return '';
 }
 
-async function stream({ key, skill, parts, signal, model }, progress) {
+async function stream({ key, skill, parts, signal, model, thoughts = true }, progress) {
   const response = await send(`${BASE}/v1beta/models/${model}:streamGenerateContent?alt=sse`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: skill }] },
       contents: [{ role: 'user', parts }],
-      // Streaming thought summaries keeps the connection busy while the model plans.
-      generationConfig: { thinkingConfig: { includeThoughts: true } },
+      // Streaming thought summaries keeps the connection busy while the model plans a handbook.
+      // Questions are quick, so they set no thinking options at all.
+      ...(thoughts ? { generationConfig: { thinkingConfig: { includeThoughts: true } } } : {}),
     }),
     signal,
   }, 'generate');
