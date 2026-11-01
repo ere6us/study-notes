@@ -26,7 +26,7 @@
     --pen: #8fadff;
     --pen-text: #0e1320;
     --pen-tint: #1d2740;
-    --marker: rgba(255, 210, 0, 0.34);
+    --marker: rgba(255, 210, 0, 0.42);
     --alert: #ffb4ab;
     --alert-bg: #3b1e1e;
   }
@@ -95,6 +95,7 @@ h2 { margin: 2rem 0 1rem; font: 700 1.3125rem/1.2 var(--font-head); }
 
 /* The one loud thing: key terms look marked with a highlighter */
 .sample strong, .handbook strong {
+  margin: 0 -0.12em;
   padding: 0 0.12em;
   font-weight: 700;
   background-image: linear-gradient(100deg, transparent 0.08em, var(--marker) 0.28em, var(--marker) calc(100% - 0.28em), transparent calc(100% - 0.08em));
