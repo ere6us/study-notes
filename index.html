@@ -1,44 +1,53 @@
 <!doctype html>
+<!--
+THESIS: Couture stationery for studying. The handbook arrives like a letterpress card in confident pink, not a generic AI-tool screen of grey cards.
+OWN-WORLD: Blush paper ground, white card stock, deep berry ink, one confident pink (Pantone 219-like #da1884) for actions and marks, champagne-gold hairlines. Great Vibes script only for the name and the dedication; Bodoni Moda for headings; Avenir Next for everything read and tapped. Key terms get a pink highlighter swipe.
+STORY: She opens it every day, sees it was made for her, picks notes, slides or photos, and gets a handbook to memorize or a simple explanation, then saves it as a PDF.
+FIRST VIEWPORT: Centred script name and dedication over a short gold rule; below, the two-way mode switch and two big pink pickers within thumb reach.
+FORM: Invitation-card stationery, a single centred card column.
+-->
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob:; connect-src 'self' https://generativelanguage.googleapis.com; base-uri 'none'; form-action 'none'">
   <title>Handbook Maker</title>
-  <meta name="description" content="Turn class notes and slides (PDF) into a bullet-point handbook you can revise from.">
-  <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#eef1f6" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0e1320" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Turn class notes, slides and photos into a bullet-point handbook you can revise from.">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#fdf0f6">
   <meta name="apple-mobile-web-app-title" content="Handbook">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..800;1,6..96,400..800&family=Great+Vibes&display=swap">
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="app.js"></script>
 </head>
 <body>
   <header class="masthead">
     <h1 class="brand">Handbook Maker</h1>
-    <button id="change-key" class="text-button" type="button" hidden>Change key</button>
+    <p class="dedication">Made with love for Zainab, the brightest mind I know <span class="heart" aria-hidden="true">♥</span></p>
   </header>
 
   <main>
     <section id="setup" class="panel" hidden>
       <h2 class="hero">Turn class notes into a handbook you can revise from</h2>
-      <p class="lede">Pick a PDF of typed notes or your teacher's slides. You get short bullet points, highlighted key terms, tables and a one-page revision sheet.</p>
+      <p class="lede">Pick a PDF, your teacher's PowerPoint slides, or photos of your notes. You get short bullet points, highlighted key terms, tables, simple diagrams and a one-page revision sheet.</p>
 
       <div class="sheet sample" role="img" aria-label="Example of a handbook page">
-        <p class="sample-title">Cell organelles</p>
+        <p class="sample-title">Gas exchange in the lungs</p>
         <ul>
-          <li><strong>Mitochondria</strong>: release energy from glucose by aerobic respiration.</li>
-          <li><strong>Ribosomes</strong>: make proteins.</li>
-          <li>💡 Memory hook: mitochondria are the cell's power station.</li>
+          <li><strong>Alveoli</strong>: tiny air sacs where oxygen enters the blood and carbon dioxide leaves it.</li>
+          <li><strong>Haemoglobin</strong>: carries O₂ inside red blood cells.</li>
+          <li>💡 Memory hook: alveoli look like bunches of grapes at the ends of the airways.</li>
         </ul>
       </div>
 
-      <h2>One-time setup</h2>
+      <h2 class="section-title">One-time setup</h2>
       <ol class="steps">
         <li>
-          <p>Get a free Gemini API key. Sign in with Google, tap <b>Create API key</b>, then copy the key.</p>
+          <p>Get a free Gemini API key. Sign in with Google, tap <b>Create API key</b>, then copy the key. It's free: no card or billing is needed, so skip any billing or upgrade prompts.</p>
           <a class="button secondary" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Open Google AI Studio</a>
         </li>
         <li>
@@ -59,18 +68,44 @@
     </section>
 
     <section id="pick" class="panel" hidden>
-      <input id="file-input" class="visually-hidden" type="file" accept="application/pdf,.pdf">
-      <label class="button primary big" for="file-input">Choose a PDF</label>
-      <p class="hint">Up to 50 MB. For PowerPoint or Keynote slides, export them as PDF first.</p>
+      <fieldset class="modes">
+        <legend>What do you need?</legend>
+        <div class="mode-options">
+          <label class="mode">
+            <input type="radio" name="mode" value="handbook" checked>
+            <span class="mode-name">Handbook</span>
+            <span class="mode-hint">Short notes to memorize</span>
+          </label>
+          <label class="mode">
+            <input type="radio" name="mode" value="explain">
+            <span class="mode-name">Explain simply</span>
+            <span class="mode-hint">Step by step, to understand</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <div class="pickers">
+        <input id="doc-input" class="visually-hidden" type="file" accept=".pdf,application/pdf,.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation,.ppt,application/vnd.ms-powerpoint,.key">
+        <label class="button primary big" for="doc-input">Choose PDF or slides</label>
+        <input id="photo-input" class="visually-hidden" type="file" accept="image/*" multiple>
+        <label class="button secondary big" for="photo-input">Use photos</label>
+      </div>
+      <p class="hint">PDFs up to 50 MB, or PowerPoint slides (.pptx). Photos: up to 30 at a time, of textbook pages, diagrams, whiteboards or handwritten notes.</p>
+
       <div id="problem" class="problem" role="alert" hidden>
-        <p id="problem-text"></p>
-        <button id="retry" class="button secondary" type="button" hidden>Try again</button>
+        <p id="problem-title" class="notice-title"></p>
+        <p id="problem-body"></p>
+        <div class="row">
+          <button id="retry" class="button primary" type="button" hidden>Try again</button>
+          <button id="fix-key" class="button secondary" type="button" hidden>Change key</button>
+        </div>
+        <p id="problem-code" class="code"></p>
       </div>
     </section>
 
-    <section id="working" class="panel" hidden>
-      <p id="status-text" class="status" aria-live="polite">Sending your PDF…</p>
-      <p class="hint">Keep this screen open until it's done. Long PDFs can take a few minutes.</p>
+    <section id="working" class="panel working" hidden>
+      <p id="status-text" class="status" aria-live="polite">Getting your file ready…</p>
+      <p class="hint">Keep this screen open and on until it's done. Long files can take a few minutes.</p>
       <div class="row">
         <span id="timer" class="timer" role="timer">0:00</span>
         <button id="stop" class="button secondary" type="button">Stop</button>
@@ -78,18 +113,19 @@
     </section>
 
     <section id="result" hidden>
-      <p id="result-note" class="note" hidden></p>
+      <div id="result-note" class="note" hidden></div>
       <article id="handbook" class="sheet handbook"></article>
       <div id="actions" class="actions">
         <button id="save-pdf" class="button primary" type="button">Save as PDF</button>
         <button id="copy" class="button secondary" type="button">Copy text</button>
       </div>
-      <p id="print-hint" class="hint" hidden>If no print screen opened, this page is running as a Home Screen web app, which can't print. Tap Copy text and paste it into Notes or Pages, which can save PDFs. Next time, open the site in Safari, or add it to your Home Screen again with Open as Web App turned off.</p>
+      <div id="notice" class="note" role="status" hidden></div>
     </section>
   </main>
 
   <footer class="privacy">
-    <p>Your key stays on this phone. PDFs go only to Google's Gemini API. On the free tier, Google may use what you send to improve its products, so don't upload anything private.</p>
+    <button id="change-key" class="text-button" type="button" hidden>Change key</button>
+    <p>Your key stays on this phone. Your files go only to Google's Gemini API. On the free plan, Google may use what you send to improve its products, so don't upload anything private.</p>
   </footer>
 </body>
 </html>
